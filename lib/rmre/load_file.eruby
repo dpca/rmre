@@ -1,8 +1,22 @@
 require "yaml"
 require "active_record"
 
+<% if ENV['NAME'] %>
+class <%= ENV['NAME'].camelize %> < ActiveRecord::Base
+  self.abstract_class = true
+  establish_connection(
+    adapter: 'mysql',
+    host: ENV['<%= ENV['NAME'].upcase %>_HOST'],
+    username: ENV['<%= ENV['NAME'].upcase %>_USERNAME'],
+    password: ENV['<%= ENV['NAME'].upcase %>_PASSWORD'],
+    database: ENV['<%= ENV['NAME'].upcase %>_DATABASE'],
+  )
+end
+<% end %>
+
 <%= "dir = File.join('#{out_path}', '*.rb')" %>
 Dir.glob(dir) { |file| require file }
+<% unless ENV['NAME'] %>
 
 def connect
   <%= "settings_file = './#{file_name}.yml'" %>
@@ -12,3 +26,4 @@ def connect
   ActiveRecord::Base.connection
 end
 
+<% end %>

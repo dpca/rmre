@@ -1,4 +1,4 @@
-class <%= table_name.tableize.classify %> < ActiveRecord::Base
+class <%= table_name.tableize.classify %> < <%= ENV['NAME'].camelize || 'ActiveRecord::Base' %>
   <% unless table_name == table_name.tableize %>
     <%= "self.table_name = '#{table_name}'" -%>
   <% end %>
