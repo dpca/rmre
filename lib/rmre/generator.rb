@@ -48,10 +48,8 @@ module Rmre
       File.open(File.join(output_path, "#{table_name.tableize.singularize}.rb"), "w") do |file|
         constraints = []
 
-        foreign_keys.each do |fk|
-          src = constraint_src(table_name, fk)
-          constraints << src unless src.nil?
-        end
+        constraints += belongs_to_relationships(table_name, foreign_keys)
+        constraints += has_many_relationships(table_name, foreign_keys)
 
         file.write generate_model_source(table_name, constraints)
       end
@@ -86,6 +84,84 @@ module Rmre
         fk = oracle_foreign_keys
       end
       fk
+    end
+
+    def belongs_to_relationships(table_name, foreign_keys)
+      foreign_keys.select do |fk|
+        fk['from_table'] == table_name
+      end.group_by do |fk|
+        fk['to_table']
+      end.flat_map do |to_table, fks|
+        base_name = singular_base_name(to_table)
+        if fks.size == 1
+          constraint_src_belongs_to(base_name,
+                                    to_table,
+                                    fks[0]['from_column'])
+        else
+          fks.map do |fk|
+            constraint_src_belongs_to("#{base_name}_using_#{fk['from_column']}",
+                                      to_table,
+                                      fk['from_column'])
+          end
+        end
+      end
+    end
+
+    def singular_base_name(table)
+      name = table.downcase.singularize
+      if ENV['REMOVE_RELATIONSHIP_PREFIXES']
+        potential_name = name.gsub(/^\w*?_/, '')
+        if %w(transaction).include?(potential_name)
+          name
+        else
+          potential_name
+        end
+      else
+        name
+      end
+    end
+
+    def constraint_src_belongs_to(name, to_table, from_column)
+      "belongs_to :#{name}, class_name: '#{to_table.tableize.classify}', foreign_key: :#{from_column}"
+    end
+
+    def has_many_relationships(table_name, foreign_keys)
+        foreign_keys.select do |fk|
+          fk['to_table'] == table_name
+        end.group_by do |fk|
+          fk['from_table']
+        end.flat_map do |from_table, fks|
+          base_name = plural_base_name(from_table)
+          if fks.size == 1
+            constraint_src_has_many(base_name,
+                                    from_table,
+                                    fks[0]['from_column'])
+          else
+            fks.map do |fk|
+              constraint_src_has_many("#{base_name}_using_#{fk['from_column']}",
+                                      from_table,
+                                      fk['from_column'])
+            end
+          end
+        end
+    end
+
+    def plural_base_name(table)
+      name = table.downcase.pluralize
+      if ENV['REMOVE_RELATIONSHIP_PREFIXES']
+        potential_name = name.gsub(/^\w*?_/, '')
+        if %w(attributes).include?(potential_name)
+          name
+        else
+          potential_name
+        end
+      else
+        name
+      end
+    end
+
+    def constraint_src_has_many(name, from_table, from_column)
+      "has_many :#{name}, class_name: '#{from_table.tableize.classify}', foreign_key: :#{from_column}"
     end
 
     def constraint_src(table_name, fk={})
