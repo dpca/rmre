@@ -5,17 +5,18 @@ require "active_record"
 class <%= ENV['NAME'].camelize %> < ActiveRecord::Base
   self.abstract_class = true
   establish_connection(
-    adapter: 'mysql',
+    adapter: 'mysql2',
     host: ENV['<%= ENV['NAME'].upcase %>_HOST'],
-    username: ENV['<%= ENV['NAME'].upcase %>_USERNAME'],
+    username: ENV['<%= ENV['NAME'].upcase %>_USER'],
     password: ENV['<%= ENV['NAME'].upcase %>_PASSWORD'],
     database: ENV['<%= ENV['NAME'].upcase %>_DATABASE'],
   )
 end
 <% end %>
 
-<%= "dir = File.join('#{out_path}', '*.rb')" %>
-Dir.glob(dir) { |file| require file }
+Dir.glob(File.dirname(File.absolute_path(__FILE__)) + '/models/*.rb') do |file|
+  require file
+end
 <% unless ENV['NAME'] %>
 
 def connect
