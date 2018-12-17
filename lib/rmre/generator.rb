@@ -41,7 +41,11 @@ module Rmre
     end
 
     def dump_schema(stream)
-      ActiveRecord::SchemaDumper.dump_with_fk(connection, foreign_keys, stream)
+      if ActiveRecord.version >= Gem::Version.new('5.2.0')
+        connection.create_schema_dumper({}).dump(stream)
+      else
+        ActiveRecord::SchemaDumper.dump_with_fk(connection, foreign_keys, stream)
+      end
     end
 
     def create_model(table_name)
